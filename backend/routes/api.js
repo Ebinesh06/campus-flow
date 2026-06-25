@@ -23,9 +23,11 @@ router.post('/task', async (req, res) => {
   if (!title || !subject || !deadline) return res.status(400).json({ error: 'Missing fields' });
 
   try {
-    const { data, error } = await supabase.from('tasks').insert([{ title, subject, deadline }]).select().single();
-    if (error) throw error;
+    //const { data, error } = await supabase.from('tasks').insert([{ title, subject, deadline }]).select().single();
+    //if (error) throw error;
 
+    const data = { id: 999, title, subject, deadline, status: "Faked DB Save" };
+    
     triggerAutomation('TASK_CREATED', data);
 
     // Send to Python RAG
