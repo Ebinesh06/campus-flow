@@ -25,7 +25,7 @@ router.post('/task', async (req, res) => {
   try {
     const { data, error } = await supabase.from('tasks').insert([{ title, subject, deadline }]).select().single();
     if (error) throw error;
-
+    
     triggerAutomation('TASK_CREATED', data);
 
     // Send to Python RAG
