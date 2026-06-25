@@ -271,7 +271,7 @@ export default function Dashboard({ user, onLogout }) {
 
           {activeTab === "calendar" && (
             <div style={{ animation: "slideUp 0.4s ease" }}>
-              <FloralCalendar t={t} tasks={tasks} />
+              <FloralCalendar t={t} tasks={tasks} setTasks={setTasks} />
             </div>
           )}
 
@@ -1448,12 +1448,17 @@ const CAL_DECO = [
 ];
 
 // ── FloralCalendar Component ─────────────────────────────────────────────────
-function FloralCalendar({ t, tasks }) {
+function FloralCalendar({ t, tasks, setTasks }) {
   const today = new Date();
   const [view, setView] = useState("month");
   const [curMonth, setCurMonth] = useState(today.getMonth());
   const [curYear, setCurYear] = useState(today.getFullYear());
   const [viewYear, setViewYear] = useState(today.getFullYear());
+
+  // ── Add Event modal state ──────────────────────────────────────────────
+  const [eventModalDate, setEventModalDate] = useState(null); // Date object or null
+  const [eventTitle, setEventTitle] = useState("");
+  const [eventPriority, setEventPriority] = useState("medium");
 
   const navMonth = (dir) => {
     let m = curMonth + dir, y = curYear;
@@ -1463,6 +1468,29 @@ function FloralCalendar({ t, tasks }) {
   };
 
   const jumpToMonth = (mi) => { setCurMonth(mi); setCurYear(viewYear); setView("month"); };
+
+  const openEventModal = (day) => {
+    setEventModalDate(new Date(curYear, curMonth, day));
+    setEventTitle("");
+    setEventPriority("medium");
+  };
+  const closeEventModal = () => setEventModalDate(null);
+
+  const addEvent = () => {
+    if (!eventTitle.trim() || !eventModalDate) return;
+    const newEvent = {
+      id: Date.now(),
+      title: eventTitle.trim(),
+      subject: "Event",
+      deadline: eventModalDate.toISOString().slice(0, 10),
+      priority: eventPriority,
+      note: "",
+      done: false,
+      createdAt: new Date().toISOString(),
+    };
+    setTasks(prev => [newEvent, ...prev]);
+    closeEventModal();
+  };
 
   return (
     <div style={{ fontFamily: "'Nunito', 'Inter', sans-serif" }}>
@@ -1480,14 +1508,71 @@ function FloralCalendar({ t, tasks }) {
       </div>
 
       {view === "month"
-        ? <FloralMonthView curMonth={curMonth} curYear={curYear} today={today} tasks={tasks} t={t} onNav={navMonth} />
+        ? <FloralMonthView curMonth={curMonth} curYear={curYear} today={today} tasks={tasks} t={t} onNav={navMonth} onDayClick={openEventModal} />
         : <FloralYearView viewYear={viewYear} today={today} tasks={tasks} t={t} onYearNav={d => setViewYear(y => y+d)} onJump={jumpToMonth} />
       }
+
+      {/* ── Add Event Modal ── */}
+      {eventModalDate && (
+        <div onClick={closeEventModal} style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex",
+          alignItems: "center", justifyContent: "center", zIndex: 1000, animation: "fadeIn 0.2s ease",
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: t.cardBg, borderRadius: 18, padding: 24, width: 340,
+            boxShadow: "0 12px 40px rgba(0,0,0,0.25)", animation: "calPop 0.3s cubic-bezier(.34,1.56,.64,1)",
+          }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: t.textPrimary, marginBottom: 4 }}>📌 Add Event</div>
+            <div style={{ fontSize: 12, color: t.textMuted, marginBottom: 16 }}>
+              {eventModalDate.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+            </div>
+
+            <label style={{ fontSize: 12, fontWeight: 700, color: t.textMuted, textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6 }}>Event Title</label>
+            <input
+              autoFocus
+              value={eventTitle}
+              onChange={e => setEventTitle(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") addEvent(); }}
+              placeholder="e.g. Submit assignment"
+              style={{
+                width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${t.border}`,
+                background: t.pageBg, color: t.textPrimary, fontSize: 14, marginBottom: 14, boxSizing: "border-box",
+                fontFamily: "'Nunito','Inter',sans-serif",
+              }}
+            />
+
+            <label style={{ fontSize: 12, fontWeight: 700, color: t.textMuted, textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6 }}>Priority</label>
+            <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+              {TASK_PRIORITIES.map(p => (
+                <button key={p.id} onClick={() => setEventPriority(p.id)} style={{
+                  flex: 1, padding: "8px 0", borderRadius: 10, cursor: "pointer", fontSize: 12, fontWeight: 700,
+                  border: eventPriority === p.id ? `2px solid ${p.color}` : `2px solid ${t.border}`,
+                  background: eventPriority === p.id ? p.bg : "transparent",
+                  color: eventPriority === p.id ? p.color : t.textMuted,
+                  transition: "all 0.15s",
+                }}>{p.icon} {p.label}</button>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={closeEventModal} style={{
+                flex: 1, padding: "10px 0", borderRadius: 10, border: `1px solid ${t.border}`,
+                background: "transparent", color: t.textMuted, fontWeight: 700, fontSize: 13, cursor: "pointer",
+              }}>Cancel</button>
+              <button onClick={addEvent} disabled={!eventTitle.trim()} style={{
+                flex: 1, padding: "10px 0", borderRadius: 10, border: "none",
+                background: eventTitle.trim() ? "#4fc3d0" : "#9CA3AF", color: "#fff", fontWeight: 700, fontSize: 13,
+                cursor: eventTitle.trim() ? "pointer" : "not-allowed",
+              }}>Add Event</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function FloralMonthView({ curMonth, curYear, today, tasks, t, onNav }) {
+function FloralMonthView({ curMonth, curYear, today, tasks, t, onNav, onDayClick }) {
   const th = CAL_THEMES[curMonth];
   const sp = CAL_SPECIALITIES[curMonth];
   const decos = CAL_DECO[curMonth];
@@ -1550,9 +1635,12 @@ function FloralMonthView({ curMonth, curYear, today, tasks, t, onNav }) {
           const dow = (firstDay + d - 1) % 7;
           const isWeekend = dow === 0 || dow === 6;
           return (
-            <div key={i} style={{
+            <div key={i}
+              onClick={() => onDayClick && onDayClick(d)}
+              title="Click to add an event"
+              style={{
               aspectRatio:"1", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-              borderRadius:"50%", fontSize:13, fontWeight: isTd ? 900 : 600, cursor:"default",
+              borderRadius:"50%", fontSize:13, fontWeight: isTd ? 900 : 600, cursor: onDayClick ? "pointer" : "default",
               background: isTd ? th.bg : hasTask ? th.light : isWeekend ? `${th.dot}18` : "transparent",
               color: isTd ? "#fff" : isWeekend ? th.accent : t.textPrimary,
               boxShadow: isTd ? `0 2px 12px ${th.dot}88` : "none",
