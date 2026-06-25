@@ -40,9 +40,16 @@ router.post('/task', async (req, res) => {
     }).catch(e => console.error('RAG offline:', e.message));
 
     return res.status(201).json(data);
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
-  }
+  }catch (err) {
+  console.error("POST /task failed:");
+  console.error(err);
+
+  return res.status(500).json({
+    error: err.toString(),
+    message: err.message,
+    stack: err.stack
+  });
+}
 });
 
 router.post('/attendance-risk', async (req, res) => {
